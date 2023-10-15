@@ -4,13 +4,17 @@ import { DataSource } from 'typeorm';
 import { IAsyncLocalStore } from '../types/async-local-store';
 import { Provider } from '@nestjs/common';
 import { TransactionalRepository } from '../transactional.repository';
+import { getDataSourceToken } from '@nestjs/typeorm';
 
 export function createInjectionToken(entity: EntityClassOrSchema) {
   const name = entity instanceof Function ? entity.name : entity.options.name;
   return `${name}_TransactionalRepository`;
 }
 
-export function createProviders(entities: EntityClassOrSchema[]): Provider[] {
+export function createProviders(
+  entities: EntityClassOrSchema[],
+  ds: string = 'default',
+): Provider[] {
   return entities.map((entity) => {
     return {
       useFactory: (
@@ -19,7 +23,7 @@ export function createProviders(entities: EntityClassOrSchema[]): Provider[] {
       ) => {
         return new TransactionalRepository(dataSource, als, entity);
       },
-      inject: [DataSource, AsyncLocalStorage],
+      inject: [getDataSourceToken(ds), AsyncLocalStorage],
       provide: createInjectionToken(entity),
     };
   });

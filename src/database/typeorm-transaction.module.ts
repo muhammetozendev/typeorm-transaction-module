@@ -28,8 +28,11 @@ export class TypeOrmTransactionModule {
     };
   }
 
-  static forFeature(entities: EntityClassOrSchema[] = []): DynamicModule {
-    const providers = createProviders(entities);
+  static forFeature(
+    entities: EntityClassOrSchema[] = [],
+    dataSource: string = 'default',
+  ): DynamicModule {
+    const providers = createProviders(entities, dataSource);
     return {
       module: TypeOrmTransactionModule,
       providers: providers,
