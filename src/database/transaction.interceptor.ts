@@ -4,33 +4,35 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { ModuleRef, Reflector } from '@nestjs/core';
 import { AsyncLocalStorage } from 'async_hooks';
-import { Observable, catchError, concatMap, finalize, throwError } from 'rxjs';
+import { Observable, catchError, concatMap, finalize } from 'rxjs';
 import { DataSource } from 'typeorm';
-import { TRANSACTIONAL_KEY } from './common/constants';
+import { DATASOURCE_KEY } from './common/constants';
 import { IAsyncLocalStore } from './types/async-local-store';
+import { getDataSourceToken } from '@nestjs/typeorm';
 
 @Injectable()
 export class TransactionInterceptor implements NestInterceptor {
   constructor(
-    private dataSource: DataSource,
     private als: AsyncLocalStorage<IAsyncLocalStore>,
     private reflector: Reflector,
+    private moduleRef: ModuleRef,
   ) {}
 
   async intercept(
     context: ExecutionContext,
     next: CallHandler<any>,
   ): Promise<Observable<any>> {
-    const metadata = this.reflector.getAllAndOverride(TRANSACTIONAL_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!metadata) {
-      return next.handle();
-    }
-    const queryRunner = this.dataSource.createQueryRunner();
+    const dataSourceToken: string = this.reflector.getAllAndOverride(
+      DATASOURCE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const dataSource: DataSource = this.moduleRef.get(
+      getDataSourceToken(dataSourceToken),
+      { strict: false },
+    );
+    const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -41,7 +43,6 @@ export class TransactionInterceptor implements NestInterceptor {
     return this.als.run(store, () => {
       return next.handle().pipe(
         concatMap(async (data) => {
-          console.log('Comitting');
           await queryRunner.commitTransaction();
           return data;
         }),

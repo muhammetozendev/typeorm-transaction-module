@@ -1,1 +1,1 @@
-export const TRANSACTIONAL_KEY = 'transactional';
+export const DATASOURCE_KEY = 'datasource';

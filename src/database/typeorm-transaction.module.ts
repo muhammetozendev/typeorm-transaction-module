@@ -2,7 +2,6 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseModuleOptions } from './types/database-module-options';
 import { AsyncLocalStorage } from 'async_hooks';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TransactionInterceptor } from './transaction.interceptor';
 import { EntityClassOrSchema } from '@nestjs/typeorm/dist/interfaces/entity-class-or-schema.type';
 import { createProviders } from './common/utils';
@@ -14,10 +13,7 @@ export class TypeOrmTransactionModule {
       module: TypeOrmTransactionModule,
       imports: [TypeOrmModule.forRoot(options)],
       providers: [
-        {
-          provide: APP_INTERCEPTOR,
-          useClass: TransactionInterceptor,
-        },
+        TransactionInterceptor,
         {
           provide: AsyncLocalStorage,
           useValue: new AsyncLocalStorage(),
