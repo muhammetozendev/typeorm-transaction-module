@@ -1,6 +1,6 @@
 # Description
 
-A NestJS module to make TypeORM transaction management easier across different services.s
+A NestJS module to make TypeORM transaction management easier across different services.
 
 # How it works
 
