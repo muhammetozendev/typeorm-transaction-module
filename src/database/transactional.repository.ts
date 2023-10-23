@@ -100,7 +100,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     await this.getTypeormRepository().upsert(entity, conflictPaths);
   }
 
-  async upsertMany(entities: DeepPartial<T[]>, conflictPaths: string[]) {
+  async upsertMany(entities: Array<DeepPartial<T>>, conflictPaths: string[]) {
     await this.getTypeormRepository().upsert(entities, conflictPaths);
   }
 
