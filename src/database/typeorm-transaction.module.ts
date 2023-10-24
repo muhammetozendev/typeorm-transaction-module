@@ -1,32 +1,29 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DatabaseModuleOptions } from './types/database-module-options';
-import { AsyncLocalStorage } from 'async_hooks';
-import { TransactionInterceptor } from './transaction.interceptor';
-import { EntityClassOrSchema } from '@nestjs/typeorm/dist/interfaces/entity-class-or-schema.type';
 import { createProviders } from './common/utils';
+import { DataSource, EntitySchema } from 'typeorm';
+import { ConnectionOptions } from './types/connection-options';
+import {
+  DEFAULT_DATASOURCE_NAME,
+  DataSourceStorage,
+} from './common/datasource-storage';
 
 @Module({})
 export class TypeOrmTransactionModule {
-  static forRoot(options: DatabaseModuleOptions): DynamicModule {
+  static async forRoot(options: ConnectionOptions): Promise<DynamicModule> {
+    const dataSource = new DataSource(options);
+    await dataSource.initialize();
+    DataSourceStorage.setDataSource(
+      options.name ?? DEFAULT_DATASOURCE_NAME,
+      dataSource
+    );
     return {
       module: TypeOrmTransactionModule,
-      imports: [TypeOrmModule.forRoot(options)],
-      providers: [
-        TransactionInterceptor,
-        {
-          provide: AsyncLocalStorage,
-          useValue: new AsyncLocalStorage(),
-        },
-      ],
-      exports: [AsyncLocalStorage],
-      global: true,
     };
   }
 
   static forFeature(
-    entities: EntityClassOrSchema[] = [],
-    dataSource: string = 'default',
+    entities: Array<Function | EntitySchema<any>> = [],
+    dataSource: string = DEFAULT_DATASOURCE_NAME
   ): DynamicModule {
     const providers = createProviders(entities, dataSource);
     return {

@@ -2,6 +2,7 @@ import {
   DataSource,
   DeepPartial,
   EntityManager,
+  EntitySchema,
   FindManyOptions,
   FindOneOptions,
   FindOptionsRelations,
@@ -11,8 +12,8 @@ import {
 } from 'typeorm';
 import { AsyncLocalStorage } from 'async_hooks';
 import { IAsyncLocalStore } from './types/async-local-store';
-import { EntityClassOrSchema } from '@nestjs/typeorm/dist/interfaces/entity-class-or-schema.type';
 import { IPagination } from './types/pagination';
+import { DEFAULT_DATASOURCE_NAME } from './common/datasource-storage';
 
 type IdType = number | string | number[] | string[];
 
@@ -24,17 +25,26 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   constructor(
     private dataSource: DataSource,
     private als: AsyncLocalStorage<IAsyncLocalStore>,
-    private EntityClass: EntityClassOrSchema,
+    private EntityClass: Function | EntitySchema<any>,
+    private connection: string = DEFAULT_DATASOURCE_NAME
   ) {}
 
-  getTypeormRepository(): Repository<T> {
-    const manager: EntityManager =
-      this.als.getStore()?.manager ?? this.dataSource.manager;
+  getTypeOrmRepository(): Repository<T> {
+    let manager: EntityManager;
+    if (this.als.getStore() && this.als.getStore()[this.connection]) {
+      manager = this.als.getStore()[this.connection];
+    } else {
+      manager = this.dataSource.manager;
+    }
     return manager.getRepository(this.EntityClass);
   }
 
+  createQueryBuilder() {
+    return this.getTypeOrmRepository().createQueryBuilder();
+  }
+
   async findAll(options?: FindManyOptions<T>) {
-    return await this.getTypeormRepository()
+    return await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions(options ?? {})
       .getMany();
@@ -43,16 +53,16 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   async findAllWithPagination(
     limit: number,
     page: number,
-    options?: FindManyOptions<T>,
+    options?: FindManyOptions<T>
   ): Promise<IPagination<T>> {
-    const data = await this.getTypeormRepository()
+    const data = await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions(options ?? {})
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
 
-    const count = await this.getTypeormRepository()
+    const count = await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions(options ?? {})
       .getCount();
@@ -67,14 +77,14 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   }
 
   async findOne(options: IFindOneOptions<T>) {
-    return await this.getTypeormRepository()
+    return await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions(options)
       .getOne();
   }
 
   async findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
-    return await this.getTypeormRepository()
+    return await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions({
         where,
@@ -83,29 +93,29 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   }
 
   async create(entity: DeepPartial<T>): Promise<T> {
-    await this.getTypeormRepository().insert(entity);
+    await this.getTypeOrmRepository().insert(entity);
     return entity as T;
   }
 
   async createMany(entity: Array<DeepPartial<T>>): Promise<T[]> {
-    await this.getTypeormRepository().insert(entity);
+    await this.getTypeOrmRepository().insert(entity);
     return entity as T[];
   }
 
   async update(id: IdType | FindOptionsWhere<T>, entity: DeepPartial<T>) {
-    await this.getTypeormRepository().update(id, entity);
+    await this.getTypeOrmRepository().update(id, entity);
   }
 
   async upsert(entity: DeepPartial<T>, conflictPaths: string[]) {
-    await this.getTypeormRepository().upsert(entity, conflictPaths);
+    await this.getTypeOrmRepository().upsert(entity, conflictPaths);
   }
 
   async upsertMany(entities: Array<DeepPartial<T>>, conflictPaths: string[]) {
-    await this.getTypeormRepository().upsert(entities, conflictPaths);
+    await this.getTypeOrmRepository().upsert(entities, conflictPaths);
   }
 
   async delete(id: IdType | FindOptionsWhere<T>) {
-    await this.getTypeormRepository().delete(id);
+    await this.getTypeOrmRepository().delete(id);
   }
 
   async executeRawQuery(query: string, params?: any[]) {

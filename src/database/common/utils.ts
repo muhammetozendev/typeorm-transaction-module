@@ -1,29 +1,27 @@
-import { EntityClassOrSchema } from '@nestjs/typeorm/dist/interfaces/entity-class-or-schema.type';
-import { AsyncLocalStorage } from 'async_hooks';
-import { DataSource } from 'typeorm';
-import { IAsyncLocalStore } from '../types/async-local-store';
+import { EntitySchema } from 'typeorm';
 import { Provider } from '@nestjs/common';
 import { TransactionalRepository } from '../transactional.repository';
-import { getDataSourceToken } from '@nestjs/typeorm';
+import { asyncLocalStorage as als } from './async-local-storage';
+import {
+  DEFAULT_DATASOURCE_NAME,
+  DataSourceStorage,
+} from './datasource-storage';
 
-export function createInjectionToken(entity: EntityClassOrSchema) {
+export function createInjectionToken(entity: Function | EntitySchema<any>) {
   const name = entity instanceof Function ? entity.name : entity.options.name;
   return `${name}_TransactionalRepository`;
 }
 
 export function createProviders(
-  entities: EntityClassOrSchema[],
-  ds: string = 'default',
+  entities: Array<Function | EntitySchema<any>>,
+  ds: string = DEFAULT_DATASOURCE_NAME
 ): Provider[] {
   return entities.map((entity) => {
     return {
-      useFactory: (
-        dataSource: DataSource,
-        als: AsyncLocalStorage<IAsyncLocalStore>,
-      ) => {
-        return new TransactionalRepository(dataSource, als, entity);
+      useFactory: () => {
+        const dataSource = DataSourceStorage.getDataSource(ds);
+        return new TransactionalRepository(dataSource, als, entity, ds);
       },
-      inject: [getDataSourceToken(ds), AsyncLocalStorage],
       provide: createInjectionToken(entity),
     };
   });

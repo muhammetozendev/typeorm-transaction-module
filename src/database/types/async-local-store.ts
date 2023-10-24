@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm';
 
 export interface IAsyncLocalStore {
-  manager: EntityManager;
+  [key: string]: EntityManager;
 }
