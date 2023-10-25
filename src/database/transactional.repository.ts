@@ -26,7 +26,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     private dataSource: DataSource,
     private als: AsyncLocalStorage<IAsyncLocalStore>,
     private EntityClass: Function | EntitySchema<any>,
-    private connection: string = DEFAULT_DATASOURCE_NAME
+    private connection: string = DEFAULT_DATASOURCE_NAME,
   ) {}
 
   getTypeOrmRepository(): Repository<T> {
@@ -53,7 +53,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   async findAllWithPagination(
     limit: number,
     page: number,
-    options?: FindManyOptions<T>
+    options?: FindManyOptions<T>,
   ): Promise<IPagination<T>> {
     const data = await this.getTypeOrmRepository()
       .createQueryBuilder()
@@ -116,9 +116,5 @@ export class TransactionalRepository<T extends ObjectLiteral> {
 
   async delete(id: IdType | FindOptionsWhere<T>) {
     await this.getTypeOrmRepository().delete(id);
-  }
-
-  async executeRawQuery(query: string, params?: any[]) {
-    return this.dataSource.query(query, params);
   }
 }

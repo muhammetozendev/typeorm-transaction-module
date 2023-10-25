@@ -71,7 +71,7 @@ class UsersService {
 }
 ```
 
-As seen above, the type of injected repository is `TransactionalRepository`. By default, the queries are NOT wrapped inside a transaction even if you inject TransactionalRepository into your service class. In order to run queries in a transaction, `@Transactional` decorator must be used on the route handler that is calling the service method. Here's an example:
+As seen above, the type of injected repository is `TransactionalRepository`. By default, the queries are NOT wrapped inside a transaction even if you inject TransactionalRepository into your service class. In order to run queries in a transaction, `@Transactional` decorator must be used on either the route handler or the service method that is handling the request. Here's an example:
 
 ```ts
 import { Transactional } from 'nestjs-typeorm-transactions';
@@ -97,6 +97,28 @@ If a request hits the endpoint `/users/with-transcation`, any database query exe
 `doSomethingWithUser` method calls, all of these queries will be wrapped in a transaction as we have used `@Transactional` decorator.
 
 However, if a request hits the other endpoint `/users/without-transcation`, no transaction will be created. So it's crucial to remember to add `@Transactional` decorator on route handlers where we need atomicity.
+
+One thing to note here is transactional logic is recommended to be kept in service methods. Just like we can place `@Transactional` decorator on the route handler, we can also put it on the service method as well. Here's an example:
+
+```ts
+import {
+  InjectTransactionalRepository,
+  TransactionalRepository,
+  Transactional,
+} from 'nestjs-typeorm-transactions';
+
+class UsersService {
+  constructor(
+    @InjectTransactionalRepository(User)
+    private userRepository: TransactionalRepository<User>,
+  ) {}
+
+  @Transactional()
+  async doSomethingWithUser() {
+    // ...
+  }
+}
+```
 
 ## Connecting to multiple databases
 
@@ -167,17 +189,19 @@ class UsersService {
     private userRepository: TransactionalRepository<Article>,
   ) {}
 
+  @Transactional()
   async doSomethingWithUser() {
     // ...
   }
 
+  @Transactional('second_db')
   async doSomethingWithArticle() {
     // ...
   }
 }
 ```
 
-And lastly, for transactional query execution, we need to use `@Transactional` decorator as follows:
+And lastly, controllers must be defined:
 
 ```ts
 import { Transactional } from 'nestjs-typeorm-transactions';
@@ -187,13 +211,11 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Post()
-  @Transactional()
   async withTransaction() {
     await this.usersService.doSomethingWithUser();
   }
 
   @Post('/articles')
-  @Transactional('second_db')
   async withTransaction() {
     await this.usersService.doSomethingWithArticle();
   }
@@ -201,3 +223,61 @@ export class UsersController {
 ```
 
 When `@Transactional` decorator is added without any argument, it will wrap all database queries executed by the default connection in a transaction (mysql connection in this case). However, the second decorator has the argument `second_db` which means in the route `/users/articles`, only the database queries that are sent to the postgres database will be in a transaction.
+
+# Methods for querying
+
+This package creates some wrapper methods to make it easier to handle crud operations and pagination. However, native typeorm repositories can also be obtained by calling `getTypeOrmRepository` from the injected `TransactionalRepository` instances.
+
+Following is a list of defined method signatures in this package:
+
+```ts
+export declare class TransactionalRepository<T extends ObjectLiteral> {
+  /* Get native typeorm repository */
+  getTypeOrmRepository(): Repository<T>;
+
+  /* Create query builder */
+  createQueryBuilder(): SelectQueryBuilder<T>;
+
+  /* Return multiple records */
+  findAll(options?: FindManyOptions<T>): Promise<T[]>;
+
+  /* Return multiple records with pagination */
+  findAllWithPagination(
+    limit: number,
+    page: number,
+    options?: FindManyOptions<T>,
+  ): Promise<IPagination<T>>;
+
+  /* Find one record */
+  findOne(options: IFindOneOptions<T>): Promise<T>;
+
+  /* Find one record */
+  findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T>;
+
+  /* Create one record. Unlike save, it attempts to insert without checking if entity exists */
+  create(entity: DeepPartial<T>): Promise<T>;
+
+  /* Executes a single fast insert query */
+  createMany(entity: Array<DeepPartial<T>>): Promise<T[]>;
+
+  /* Updates an entity */
+  update(
+    id: IdType | FindOptionsWhere<T>,
+    entity: DeepPartial<T>,
+  ): Promise<void>;
+
+  /* Upserts a record */
+  upsert(entity: DeepPartial<T>, conflictPaths: string[]): Promise<void>;
+
+  /* Upserts many records */
+  upsertMany(
+    entities: Array<DeepPartial<T>>,
+    conflictPaths: string[],
+  ): Promise<void>;
+
+  /* Deletes record(s) */
+  delete(id: IdType | FindOptionsWhere<T>): Promise<void>;
+}
+```
+
+For querying, either the provided utility methods could be used or `getTypeOrmRepository` method can be used to retrieve a typeorm repository instance which comes from the actual `typeorm` repository itself.
