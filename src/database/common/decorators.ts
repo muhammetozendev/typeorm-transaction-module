@@ -1,5 +1,7 @@
-import { Inject } from '@nestjs/common';
-import { createInjectionToken } from './utils';
+import {
+  getDataSourceInjectionToken,
+  getRepositoryInjectionToken,
+} from './utils';
 import {
   DEFAULT_DATASOURCE_NAME,
   DataSourceStorage,
@@ -7,6 +9,7 @@ import {
 import { IAsyncLocalStore } from '../types/async-local-store';
 import { asyncLocalStorage } from './async-local-storage';
 import { EntitySchema } from 'typeorm';
+import { Inject } from '@nestjs/common';
 
 export const Transactional =
   (connection: string = DEFAULT_DATASOURCE_NAME) =>
@@ -39,6 +42,10 @@ export const Transactional =
     return descriptor;
   };
 
+export const InjectTransactionalDataSource = (
+  dataSource: string = DEFAULT_DATASOURCE_NAME
+) => Inject(getDataSourceInjectionToken(dataSource));
+
 export const InjectTransactionalRepository = (
   entity: Function | EntitySchema<any>
-) => Inject(createInjectionToken(entity));
+) => Inject(getRepositoryInjectionToken(entity));

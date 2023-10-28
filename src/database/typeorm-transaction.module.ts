@@ -1,5 +1,5 @@
-import { DynamicModule, Module } from '@nestjs/common';
-import { createProviders } from './common/utils';
+import { DynamicModule, Module, Provider } from '@nestjs/common';
+import { createProviders, getDataSourceInjectionToken } from './common/utils';
 import { DataSource, EntitySchema } from 'typeorm';
 import { ConnectionOptions } from './types/connection-options';
 import {
@@ -16,8 +16,17 @@ export class TypeOrmTransactionModule {
       options.name ?? DEFAULT_DATASOURCE_NAME,
       dataSource
     );
+    const providers: Provider[] = [
+      {
+        useFactory: () => dataSource,
+        provide: getDataSourceInjectionToken(options.name),
+      },
+    ];
     return {
       module: TypeOrmTransactionModule,
+      providers: providers,
+      exports: providers,
+      global: true,
     };
   }
 

@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { UnknownConnectionException } from '../exceptions/unknown-connection-exception';
 
 export const DEFAULT_DATASOURCE_NAME = 'default';
 
@@ -6,7 +7,11 @@ export class DataSourceStorage {
   private static readonly dataSourceStore = new Map<string, DataSource>();
 
   static getDataSource(name: string = DEFAULT_DATASOURCE_NAME): DataSource {
-    return this.dataSourceStore.get(name);
+    const dataSource = this.dataSourceStore.get(name);
+    if (!dataSource) {
+      throw new UnknownConnectionException(name);
+    }
+    return dataSource;
   }
 
   static setDataSource(name: string, dataSource: DataSource): void {
