@@ -353,6 +353,17 @@ export declare class TransactionalRepository<T extends ObjectLiteral> {
   /* Find one record */
   findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T>;
 
+  /* Find an entity by primary key column, possibly caching the result for a limited amount of time */
+  findOneByPK(
+    id: number | string | Date,
+    cacheOptions?: {
+      /* Whether to expire the record from cache after the first retrieval */
+      once?: boolean;
+      /* Time in milliseconds for expiry ttl */
+      ttl?: number;
+    },
+  ): Promise<T>;
+
   /* Create one record. Unlike save, it attempts to insert without checking if entity exists */
   create(entity: DeepPartial<T>): Promise<T>;
 
@@ -380,3 +391,56 @@ export declare class TransactionalRepository<T extends ObjectLiteral> {
 ```
 
 For querying, either the provided utility methods could be used or `getTypeOrmRepository` method can be used to retrieve a typeorm repository instance which comes from the actual `typeorm` repository itself.
+
+Another important method here is `findOneByPK` which locates entities by their primary keys, possibly caching them if `cacheOptions` property is specified. Any call to `findOneByPK` will first look up the entry in the cache. The database query will only be sent in case of a cache hit. This method is used for validating resource IDs parsed from the request URL.
+
+# Entity ID Validation
+
+`nestjs-typeorm-transactions` also supports means to validate path IDs. `EntityExistsPipe` can be used to ensure the resource exists before executing the route handler. In case resouce does not exist, `NotFoundException` is thrown. Here's an example usage:
+
+```ts
+@Controller('users')
+export class UsersConroller {
+  @Get(':id')
+  findOne(
+    @Param('id', EntityExistsPipe(User))
+    id: string,
+  ) {
+    return this.usersService.findOne(+id);
+  }
+}
+```
+
+`EntityExistsPipe` accepts 2 arguments. The first one is the entity class whose id is being validated. Second argument is optional and specifies caching configuration. Here's the method signature for arguments:
+
+```ts
+function EntityExistsPipe<T>(
+  EntityClass: Function | EntitySchema<T>,
+  cacheOptions?: {
+    /* Time in milliseconds for expiry */
+    ttl?: number;
+
+    /* Whether to expire the record from cache after the first retrieval */
+    once?: boolean;
+  },
+);
+```
+
+As can be seen above, we can supply `ttl` and `once` properties to configure caching behavior. `ttl` sets the duration in milliseconds that specifies how long record will stay in cache. And if `once` is set to true, the record will expire after the initial retrieval. The default values for `ttl` is 5000 and for `once` is true.
+
+In addition, we need to prevent sending the same SELECT query to DB twice both for validation (`EntityExistsPipe` would send one query for validating the id) and querying the resource again inside the route handler where the resource might be needed for further processing. `EntityExistsPipe` will save the queried resource in the cache and it can be retrieved from the cache later to avoid duplicate querying. The reason `once` is true by default is because after we retrieve the record from the cache in route handler, it will no longer be needed and therefore removed from cache. But that behavior can be disabled by setting `once` to false as below:
+
+```ts
+@Controller('users')
+export class UsersConroller {
+  @Get(':id')
+  findOne(
+    @Param('id', EntityExistsPipe(User, { once: false }))
+    id: string,
+  ) {
+    return this.usersService.findOne(+id);
+  }
+}
+```
+
+It should also be noted that in order to prevent duplicate queries from being sent to the DB as explained above, `findOneByPK` method must be used in route handler/service methods as `findOneByPK` first looks up the cache for the record before querying the database.

@@ -17,10 +17,12 @@ import {
   DataSourceStorage,
 } from './common/datasource-storage';
 import { asyncLocalStorage as als } from './common/async-local-storage';
+import { CacheStorage } from './common/cache-storage';
 
 type IdType = number | string | Date | number[] | string[] | Date[];
 
-export interface IFindOneOptions<T> extends FindOneOptions<T> {
+export interface IFindOneOptions<T extends ObjectLiteral>
+  extends FindOneOptions<T> {
   relations?: FindOptionsRelations<T>;
 }
 
@@ -31,7 +33,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     private connection: string = DEFAULT_DATASOURCE_NAME
   ) {}
 
-  static async executeRawQuery<T = any>(options: {
+  static async executeRawQuery<Raw = any>(options: {
     query: string;
     parameters?: any[];
     connection?: string;
@@ -43,7 +45,13 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     } else {
       manager = DataSourceStorage.getDataSource(connection).manager;
     }
-    return await manager.query<T>(options.query, options.parameters);
+    return await manager.query<Raw>(options.query, options.parameters);
+  }
+
+  private getEntityName(): string {
+    return this.EntityClass instanceof Function
+      ? this.EntityClass.name
+      : this.EntityClass.options.name;
   }
 
   getTypeOrmRepository(): Repository<T> {
@@ -101,12 +109,40 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   }
 
   async findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]) {
-    return await this.getTypeOrmRepository()
-      .createQueryBuilder()
-      .setFindOptions({
-        where,
-      })
-      .getOne();
+    return await this.findOne({
+      where,
+    });
+  }
+
+  async findOneByPK(
+    id: number | string | Date,
+    cacheOptions?: {
+      once?: boolean;
+      ttl?: number;
+    }
+  ) {
+    let entity: T;
+    const repository: Repository<any> = this.getTypeOrmRepository();
+    const primaryKeyColumn = repository.metadata.primaryColumns[0].propertyName;
+
+    const entityName = this.getEntityName();
+    const cacheKey = `${entityName}-${id}`;
+
+    entity = await CacheStorage.get(cacheKey);
+
+    if (!entity) {
+      entity = await repository.findOneBy({
+        [primaryKeyColumn]: id,
+      });
+
+      if (cacheOptions) {
+        await CacheStorage.set(cacheKey, entity, {
+          once: cacheOptions.once,
+          ttl: cacheOptions.ttl,
+        });
+      }
+    }
+    return entity;
   }
 
   async create(entity: DeepPartial<T>): Promise<T> {
