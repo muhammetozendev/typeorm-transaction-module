@@ -7,6 +7,7 @@ import {
   FindOneOptions,
   FindOptionsRelations,
   FindOptionsWhere,
+  ObjectId,
   ObjectLiteral,
   QueryRunner,
   Repository,
@@ -20,7 +21,15 @@ import {
 import { asyncLocalStorage as als } from './common/async-local-storage';
 import { CacheStorage } from './common/cache-storage';
 
-type IdType = number | string | Date | number[] | string[] | Date[];
+type IdType =
+  | number
+  | string
+  | ObjectId
+  | Date
+  | number[]
+  | string[]
+  | ObjectId[]
+  | Date[];
 
 export interface IFindOneOptions<T extends ObjectLiteral>
   extends FindOneOptions<T> {
@@ -156,44 +165,61 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     return entity;
   }
 
-  async create(entity: DeepPartial<T>): Promise<T> {
-    await this.getTypeOrmRepository().insert(entity);
-    return entity as T;
+  async preload(entity: DeepPartial<T>): Promise<T> {
+    return await this.getTypeOrmRepository().preload(entity);
   }
 
-  async createMany(entity: Array<DeepPartial<T>>): Promise<T[]> {
-    await this.getTypeOrmRepository().insert(entity);
-    return entity as T[];
+  async insert(entity: DeepPartial<T>): Promise<T>;
+  async insert(entity: DeepPartial<T>[]): Promise<T[]>;
+  async insert(
+    entity: DeepPartial<T> | Array<DeepPartial<T>>,
+  ): Promise<T | T[]> {
+    if (entity instanceof Array) {
+      await this.getTypeOrmRepository().insert(entity);
+      return entity as T[];
+    } else {
+      await this.getTypeOrmRepository().insert(entity);
+      return entity as T;
+    }
   }
 
-  async save(entity: DeepPartial<T>, saveOptions?: SaveOptions) {
+  create(entity: DeepPartial<T>): T;
+  create(entity: DeepPartial<T>[]): T[];
+  create(entity: DeepPartial<T> | DeepPartial<T>[]): T | T[] {
+    if (entity instanceof Array) {
+      return this.getTypeOrmRepository().create(entity);
+    } else {
+      return this.getTypeOrmRepository().create(entity);
+    }
+  }
+
+  async save(entity: DeepPartial<T>[], saveOptions?: SaveOptions): Promise<T[]>;
+  async save(entity: DeepPartial<T>, saveOptions?: SaveOptions): Promise<T>;
+  async save(
+    entity: DeepPartial<T> | Array<DeepPartial<T>>,
+    saveOptions?: SaveOptions,
+  ) {
     if (!saveOptions) {
       saveOptions = { transaction: false };
     } else {
       saveOptions.transaction = false;
     }
-    return await this.getTypeOrmRepository().save(entity, saveOptions);
-  }
-
-  async saveMany(entity: Array<DeepPartial<T>>, saveOptions?: SaveOptions) {
-    if (!saveOptions) {
-      saveOptions = { transaction: false };
+    if (entity instanceof Array) {
+      return await this.getTypeOrmRepository().save(entity, saveOptions);
     } else {
-      saveOptions.transaction = false;
+      return await this.getTypeOrmRepository().save(entity, saveOptions);
     }
-    return await this.getTypeOrmRepository().save(entity, saveOptions);
   }
 
   async update(id: IdType | FindOptionsWhere<T>, entity: DeepPartial<T>) {
     await this.getTypeOrmRepository().update(id, entity);
   }
 
-  async upsert(entity: DeepPartial<T>, conflictPaths: string[]) {
+  async upsert(
+    entity: DeepPartial<T> | DeepPartial<T>[],
+    conflictPaths: string[],
+  ) {
     await this.getTypeOrmRepository().upsert(entity, conflictPaths);
-  }
-
-  async upsertMany(entities: Array<DeepPartial<T>>, conflictPaths: string[]) {
-    await this.getTypeOrmRepository().upsert(entities, conflictPaths);
   }
 
   async delete(id: IdType | FindOptionsWhere<T>) {

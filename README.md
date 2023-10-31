@@ -313,7 +313,23 @@ This package creates some wrapper methods to make it easier to handle crud opera
 Following is a list of defined method signatures and types in `transactional.repository.ts`:
 
 ```ts
-type IdType = number | string | Date | number[] | string[] | Date[];
+type IdType =
+  | number
+  | string
+  | ObjectId
+  | Date
+  | number[]
+  | string[]
+  | ObjectId[]
+  | Date[];
+
+interface IPagination<T> {
+  count: number;
+  pageCount: number;
+  currentPage: number;
+  limit: number;
+  data: T[];
+}
 
 export declare class TransactionalRepository<T extends ObjectLiteral> {
   /* Execute a raw query */
@@ -327,6 +343,11 @@ export declare class TransactionalRepository<T extends ObjectLiteral> {
     /* Name of the connection */
     connection?: string;
   }): Promise<T>;
+
+  /* Retrieve the transactional entity manager optionally specifying a connection name. If no connection name is specified, the default connection's entity manager is returned */
+  static getEntityManager(
+    connection: string = DEFAULT_DATASOURCE_NAME,
+  ): EntityManager;
 
   /* Get native typeorm repository */
   getTypeOrmRepository(): Repository<T>;
@@ -364,36 +385,34 @@ export declare class TransactionalRepository<T extends ObjectLiteral> {
     },
   ): Promise<T>;
 
-  /* Create one record. Unlike save, it attempts to insert without checking if entity exists and ingores cascades */
-  create(entity: DeepPartial<T>): Promise<T>;
+  /* Calls preload() method of TypeOrm */
+  async preload(entity: DeepPartial<T>): Promise<T>;
 
-  /* Executes a single fast insert query */
-  createMany(entity: Array<DeepPartial<T>>): Promise<T[]>;
+  /* Insert one record. Unlike save, it attempts to insert without checking if entity exists and ingores cascades */
+  insert(entity: DeepPartial<T>): Promise<T>;
+
+  /* Executes a single fast insert query to insert many records without cascades */
+  insert(entity: DeepPartial<T>[]): Promise<T[]>;
+
+  /* Creates entity/entities without saving them in DB */
+  create(entity: DeepPartial<T>): T;
+  create(entity: DeepPartial<T>[]): T[];
 
   /* Calls TypeOrm save() method with a single entity */
-  save(
-    entity: DeepPartial<T>,
-    saveOptions?: SaveOptions,
-  ): Promise<DeepPartial<T> & T>;
+  async save(entity: DeepPartial<T>, saveOptions?: SaveOptions): Promise<T>;
 
   /* Calls TypeOrm save() method with an array of entities */
-  saveMany(
-    entity: Array<DeepPartial<T>>,
-    saveOptions?: SaveOptions,
-  ): Promise<(DeepPartial<T> & T)[]>;
+  async save(entity: DeepPartial<T>[], saveOptions?: SaveOptions): Promise<T[]>;
 
-  /* Updates an entity */
+  /* Updates given entity/entities */
   update(
     id: IdType | FindOptionsWhere<T>,
     entity: DeepPartial<T>,
   ): Promise<void>;
 
-  /* Upserts a record */
-  upsert(entity: DeepPartial<T>, conflictPaths: string[]): Promise<void>;
-
-  /* Upserts many records */
-  upsertMany(
-    entities: Array<DeepPartial<T>>,
+  /* Upserts record(s) */
+  upsert(
+    entity: DeepPartial<T> | DeepPartial<T>[],
     conflictPaths: string[],
   ): Promise<void>;
 
