@@ -27,10 +27,11 @@ export const Transactional =
       };
 
       try {
-        await asyncLocalStorage.run(store, async () => {
+        const result = await asyncLocalStorage.run(store, async () => {
           return await originalMethod.apply(this, args);
         });
         await queryRunner.commitTransaction();
+        return result;
       } catch (error) {
         await queryRunner.rollbackTransaction();
         throw error;
@@ -43,9 +44,9 @@ export const Transactional =
   };
 
 export const InjectTransactionalDataSource = (
-  dataSource: string = DEFAULT_DATASOURCE_NAME
+  dataSource: string = DEFAULT_DATASOURCE_NAME,
 ) => Inject(getDataSourceInjectionToken(dataSource));
 
 export const InjectTransactionalRepository = (
-  entity: Function | EntitySchema<any>
+  entity: Function | EntitySchema<any>,
 ) => Inject(getRepositoryInjectionToken(entity));
