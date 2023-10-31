@@ -10,6 +10,7 @@ import {
   ObjectLiteral,
   QueryRunner,
   Repository,
+  SaveOptions,
 } from 'typeorm';
 import { IPagination } from './types/pagination';
 import {
@@ -30,7 +31,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   constructor(
     private dataSource: DataSource,
     private EntityClass: Function | EntitySchema<any>,
-    private connection: string = DEFAULT_DATASOURCE_NAME
+    private connection: string = DEFAULT_DATASOURCE_NAME,
   ) {}
 
   static async executeRawQuery<Raw = any>(options: {
@@ -46,6 +47,16 @@ export class TransactionalRepository<T extends ObjectLiteral> {
       manager = DataSourceStorage.getDataSource(connection).manager;
     }
     return await manager.query<Raw>(options.query, options.parameters);
+  }
+
+  static getEntityManager(connection: string = DEFAULT_DATASOURCE_NAME) {
+    let manager: EntityManager;
+    if (als.getStore() && als.getStore()[connection]) {
+      manager = als.getStore()[connection];
+    } else {
+      manager = DataSourceStorage.getDataSource(connection).manager;
+    }
+    return manager;
   }
 
   private getEntityName(): string {
@@ -78,7 +89,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   async findAllWithPagination(
     limit: number,
     page: number,
-    options?: FindManyOptions<T>
+    options?: FindManyOptions<T>,
   ): Promise<IPagination<T>> {
     const data = await this.getTypeOrmRepository()
       .createQueryBuilder()
@@ -119,7 +130,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
     cacheOptions?: {
       once?: boolean;
       ttl?: number;
-    }
+    },
   ) {
     let entity: T;
     const repository: Repository<any> = this.getTypeOrmRepository();
@@ -153,6 +164,24 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   async createMany(entity: Array<DeepPartial<T>>): Promise<T[]> {
     await this.getTypeOrmRepository().insert(entity);
     return entity as T[];
+  }
+
+  async save(entity: DeepPartial<T>, saveOptions?: SaveOptions) {
+    if (!saveOptions) {
+      saveOptions = { transaction: false };
+    } else {
+      saveOptions.transaction = false;
+    }
+    return await this.getTypeOrmRepository().save(entity, saveOptions);
+  }
+
+  async saveMany(entity: Array<DeepPartial<T>>, saveOptions?: SaveOptions) {
+    if (!saveOptions) {
+      saveOptions = { transaction: false };
+    } else {
+      saveOptions.transaction = false;
+    }
+    return await this.getTypeOrmRepository().save(entity, saveOptions);
   }
 
   async update(id: IdType | FindOptionsWhere<T>, entity: DeepPartial<T>) {

@@ -364,11 +364,23 @@ export declare class TransactionalRepository<T extends ObjectLiteral> {
     },
   ): Promise<T>;
 
-  /* Create one record. Unlike save, it attempts to insert without checking if entity exists */
+  /* Create one record. Unlike save, it attempts to insert without checking if entity exists and ingores cascades */
   create(entity: DeepPartial<T>): Promise<T>;
 
   /* Executes a single fast insert query */
   createMany(entity: Array<DeepPartial<T>>): Promise<T[]>;
+
+  /* Calls TypeOrm save() method with a single entity */
+  save(
+    entity: DeepPartial<T>,
+    saveOptions?: SaveOptions,
+  ): Promise<DeepPartial<T> & T>;
+
+  /* Calls TypeOrm save() method with an array of entities */
+  saveMany(
+    entity: Array<DeepPartial<T>>,
+    saveOptions?: SaveOptions,
+  ): Promise<(DeepPartial<T> & T)[]>;
 
   /* Updates an entity */
   update(
