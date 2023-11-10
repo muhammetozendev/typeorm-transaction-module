@@ -22,7 +22,7 @@ export const Transactional =
   (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
 
-    if (process.env.NODE_ENV.toUpperCase() !== 'TEST') {
+    if (process.env.NODE_ENV?.toUpperCase() !== 'TEST') {
       descriptor.value = async function (...args: any[]) {
         const queryRunner =
           DataSourceStorage.getDataSource(connection).createQueryRunner();

@@ -228,7 +228,7 @@ When `@Transactional` decorator is added without any argument, it will wrap all 
 
 ## Using transaction method
 
-The `@Transactional` decorator modifies the actual method to perform database queries in transaction. If this leads to unwanted side effects but you still a transaction, `transaction` method can be used. Here's the method signature:
+The `@Transactional` decorator modifies the actual method to perform database queries in transaction. If this leads to unwanted side effects but you still need a transaction, `transaction` method can be used. Here's the method signature:
 
 ```ts
 export declare const transaction: <T>(
