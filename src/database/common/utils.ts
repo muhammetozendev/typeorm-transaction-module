@@ -6,6 +6,7 @@ import {
   DataSourceStorage,
 } from './datasource-storage';
 
+/** Retrieves repository injection token */
 export function getRepositoryInjectionToken(
   entity: Function | EntitySchema<any>,
 ) {
@@ -13,12 +14,14 @@ export function getRepositoryInjectionToken(
   return `${name}_TransactionalRepository`;
 }
 
+/** Retrieves data source injection token */
 export function getDataSourceInjectionToken(
   dataSource: string = DEFAULT_DATASOURCE_NAME,
 ) {
   return `${dataSource}_TransactionalDataSource`;
 }
 
+/** Creates providers for all entities */
 export function createProviders(
   entities: Array<Function | EntitySchema<any>>,
   ds: string = DEFAULT_DATASOURCE_NAME,

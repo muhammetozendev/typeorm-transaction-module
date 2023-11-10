@@ -3,6 +3,7 @@ import { UnknownConnectionException } from '../exceptions/unknown-connection-exc
 
 export const DEFAULT_DATASOURCE_NAME = 'default';
 
+/** Stores all data sources */
 export class DataSourceStorage {
   private static readonly dataSourceStore = new Map<string, DataSource>();
 

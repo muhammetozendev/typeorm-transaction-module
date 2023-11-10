@@ -8,6 +8,7 @@ import { InjectTransactionalRepository } from './decorators';
 import { TransactionalRepository } from '../transactional.repository';
 import { EntitySchema } from 'typeorm';
 
+/** Checks if entity exists with given id. Throws not found expection if it doesn't */
 export function EntityExistsPipe<T>(
   EntityClass: Function | EntitySchema<T>,
   cacheOptions?: {
@@ -25,9 +26,11 @@ export function EntityExistsPipe<T>(
     ) {}
 
     async transform(value: any, metadata: ArgumentMetadata) {
-      const entity = await this.repository.findOneByPK(value, {
-        once: cacheOptions?.once ?? true,
-        ttl: cacheOptions?.ttl ?? 5000,
+      const primaryColumn =
+        this.repository.getTypeOrmRepository().metadata.primaryColumns[0]
+          .propertyName;
+      const entity = await this.repository.findOneBy({
+        [primaryColumn]: value,
       });
       const name =
         EntityClass instanceof Function
