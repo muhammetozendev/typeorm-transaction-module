@@ -237,9 +237,9 @@ export declare const transaction: <T>(
 ) => Promise<T>;
 ```
 
-The first argument is a callback and any database operation performed within that callback using a `TransactionalRepository`, it will be wrapped by a transaction. The `transaction` functions runs the callback using async local storage, sharing the transactional entity manager with other potential nested calls.
+The first argument is a callback and any database operation performed within that callback using a `TransactionalRepository` will be wrapped in a transaction. The `transaction` function runs the callback using async local storage, sharing the transactional entity manager with other potential nested calls.
 
-The second argument is the name of the connection specifying which database configuration should be used.
+The second argument is the name of the connection specifying which database configuration should be used. It defaults to the default connection where `name` property is not specified in `forRoot` method.
 
 ## Injecting Data Sources
 
