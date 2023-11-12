@@ -5,7 +5,6 @@ import {
   EntitySchema,
   FindManyOptions,
   FindOneOptions,
-  FindOptionsRelations,
   FindOptionsWhere,
   ObjectId,
   ObjectLiteral,
@@ -31,11 +30,6 @@ type IdType =
   | string[]
   | ObjectId[]
   | Date[];
-
-export interface IFindOneOptions<T extends ObjectLiteral>
-  extends FindOneOptions<T> {
-  relations?: FindOptionsRelations<T>;
-}
 
 export class TransactionalRepository<T extends ObjectLiteral> {
   constructor(
@@ -133,7 +127,7 @@ export class TransactionalRepository<T extends ObjectLiteral> {
   }
 
   /** Find one record */
-  async findOne(options: IFindOneOptions<T>) {
+  async findOne(options: FindOneOptions<T>) {
     return await this.getTypeOrmRepository()
       .createQueryBuilder()
       .setFindOptions(options)
@@ -227,11 +221,19 @@ export class TransactionalRepository<T extends ObjectLiteral> {
             'Not a many to many relationship or no junction metadata found',
           );
         }
-        if (r.isOwning) {
-          columnName = r.junctionEntityMetadata.columns[0].databaseName;
-        } else {
-          columnName = r.junctionEntityMetadata.columns[1].databaseName;
+
+        r.junctionEntityMetadata.columns.forEach((column) => {
+          if (column.referencedColumn.target === this.EntityClass) {
+            columnName = column.databaseName;
+          }
+        });
+
+        if (!columnName) {
+          throw new Error(
+            'No column found in junction table for the given entity',
+          );
         }
+
         await this.getTypeOrmRepository()
           .createQueryBuilder()
           .delete()

@@ -1,6 +1,6 @@
 {
   "name": "nestjs-typeorm-transactions",
-  "version": "2.2.8",
+  "version": "2.2.9",
   "description": "A NestJS module to make transaction management easier across different services",
   "author": "Muhammet Özen <muhammed_ozenn@hotmail.com>",
   "license": "MIT",
